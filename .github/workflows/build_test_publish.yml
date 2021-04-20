@@ -1,0 +1,58 @@
+name: Build, test and publish the package to PyPI
+
+on: push
+
+jobs:
+  build-test-publish:
+    name: Build, test and publish Python 🐍 distributions 📦 to PyPI
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@master
+      with:                                 # This will checkout the current branch instead of master.
+        ref: ${{ github.ref }}
+
+    - name: Set up Python 3.6
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.6
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run unit tests
+      run: >-
+        python -m
+        unittest
+        tests/test_shape.py
+
+    - name: Install pypa/build
+      run: >-
+        python -m
+        pip install
+        build
+        --user
+
+    - name: Build a binary wheel and a source tarball
+      run: >-
+        python -m
+        build
+        --sdist
+        --wheel
+        --outdir dist/
+        .
+
+    - name: Publish distribution 📦 to PyPI
+      if: startsWith(github.ref, 'refs/tags')   # Checks if commit is tagged
+      uses: pypa/gh-action-pypi-publish@master
+      with:                                     
+        password: ${{ secrets.pypi_distribution_token }}
+        repository_url: https://upload.pypi.org/legacy/
+
+    - name: Create Release
+      if: startsWith(github.ref, 'refs/tags')
+      uses: ncipollo/release-action@v1
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,31 +1,17 @@
 # -*- coding: utf-8 -*-
 """
-computeFeature
+computePitch
 
-computes a feature from the audio data
-supported features are:
-    'SpectralCentroid',
-    'SpectralCrestFactor',
-    'SpectralDecrease',
-    'SpectralFlatness',
-    'SpectralFlux',
-    'SpectralKurtosis',
-    'SpectralMfccs',
-    'SpectralPitchChroma',
-    'SpectralRolloff',
-    'SpectralSkewness',
-    'SpectralSlope',
-    'SpectralSpread',
-    'SpectralTonalPowerRatio',
-    'TimeAcfCoeff',
-    'TimeMaxAcf',
-    'TimePeakEnvelope',
-    'TimePredictivityRatio',
-    'TimeRms',
-    'TimeStd',
-    'TimeZeroCrossingRate',
+computes the fundamental frequency of the (monophonic) audio
+supported pitch trackers are:
+    'SpectralAcf',
+    'SpectralHps',
+    'TimeAcf',
+    'TimeAmdf',
+    'TimeAuditory',
+    'TimeZeroCrossings',
   Args:
-      cFeatureName: feature to compute, e.g. 'SpectralSkewness'
+      cPitchTrackName: feature to compute, e.g. 'SpectralHps'
       afAudioData: array with floating point audio data.
       f_s: sample rate
       afWindow: FFT window of length iBlockLength (default: hann)
@@ -33,8 +19,8 @@ supported features are:
       iHopLength: internal hop length (default: 2048 samples)
 
   Returns:
-      feature value v
-      time stamp t
+      f frequency
+      t time stamp for the frequency value
 """
 
 import numpy as np
@@ -47,15 +33,15 @@ from pyACA.ToolComputeHann import ToolComputeHann
 from pyACA.ToolReadAudio import ToolReadAudio
 
 
-def computeFeature(cFeatureName, afAudioData, f_s, afWindow=None, iBlockLength=4096, iHopLength=2048):
- 
-    #mypackage = __import__(".Feature" + cFeatureName, package="pyACA")
-    hFeatureFunc = getattr(pyACA, "Feature" + cFeatureName)
+def computePitch(cPitchTrackName, afAudioData, f_s, afWindow=None, iBlockLength=4096, iHopLength=2048):
+    
+    #mypackage = __import__(".Pitch" + cPitchTrackName, package="pyACA")
+    hPitchFunc = getattr(pyACA, "Pitch" + cPitchTrackName)
 
     # pre-processing
     afAudioData = ToolPreprocAudio(afAudioData, iBlockLength)
 
-    if isSpectral(cFeatureName):
+    if isSpectral(cPitchTrackName):
         # compute window function for FFT
         if afWindow is None:
             afWindow = ToolComputeHann(iBlockLength)
@@ -63,27 +49,26 @@ def computeFeature(cFeatureName, afAudioData, f_s, afWindow=None, iBlockLength=4
         assert(afWindow.shape[0] == iBlockLength), "parameter error: invalid window dimension"
 
         # in the real world, we would do this block by block...
-        [f, t, X] = spectrogram(afAudioData,
-                                fs=f_s,
-                                window=afWindow,
-                                nperseg=iBlockLength,
-                                noverlap=iBlockLength - iHopLength,
-                                nfft=iBlockLength,
-                                detrend=False,
-                                return_onesided=True,
-                                scaling='spectrum')
+        [f_k, t, X] = spectrogram(afAudioData,
+                                  f_s,
+                                  afWindow,
+                                  iBlockLength,
+                                  iBlockLength - iHopLength,
+                                  iBlockLength,
+                                  False,
+                                  True,
+                                  'spectrum')
 
         # we just want the magnitude spectrum...
         X = np.sqrt(X / 2)
 
-        # compute instantaneous feature
-        v = hFeatureFunc(X, f_s)
+        # compute instantaneous pitch chroma
+        f = hPitchFunc(X, f_s)
 
-    if isTemporal(cFeatureName):
-        [v, t] = hFeatureFunc(afAudioData, iBlockLength, iHopLength, f_s)
-        # [v, t] = hFeatureFunc(afAudioData, iBlockLength, iHopLength, f_s, np.array([2, 3]))
+    if isTemporal(cPitchTrackName):
+        [f, t] = hPitchFunc(afAudioData, iBlockLength, iHopLength, f_s)
 
-    return (v, t)
+    return (f, t)
 
 
 #######################################################
@@ -104,16 +89,14 @@ def isTemporal(cName):
     return (bResult)
 
 
-def computeFeatureCl(cPath, cFeatureName, bPlotOutput = False):
-
+def computePitchCl(cPath, cPitchTrackName, bPlotOutput=False):
+    
     # read audio file
     [f_s, afAudioData] = ToolReadAudio(cPath)
-    
-    # for debugging
-    #afAudioData = np.sin(2*np.pi * np.arange(f_s*1)*440./f_s)
+    # afAudioData = np.sin(2*np.pi * np.arange(f_s*1)*440./f_s)
 
     # compute feature
-    [v, t] = computeFeature(cFeatureName, afAudioData, f_s, None, 1024, 256)
+    [v, t] = computePitch(cPitchTrackName, afAudioData, f_s)
 
     # plot feature output
     if bPlotOutput:
@@ -137,17 +120,17 @@ if __name__ == "__main__":
     # retrieve command line args
     args = parser.parse_args()
     cPath = args.infile
-    cFeatureName = args.featurename
+    cPitchTrackName = args.featurename
     bPlotOutput = args.plotoutput
 
     # only for debugging
     if __debug__:
         if not cPath:
             cPath = "c:/temp/test.wav"
-        if not cFeatureName:
-            cFeatureName = "SpectralCentroid"
+        if not cPitchTrackName:
+            cPitchTrackName = "TimeAmdf"
         if not bPlotOutput:
-            bPlotOutput = False
+            bPlotOutput = True
 
     # call the function
-    computeFeatureCl(cPath, cFeatureName, bPlotOutput)
+    computePitchCl(cPath, cPitchTrackName, bPlotOutput)

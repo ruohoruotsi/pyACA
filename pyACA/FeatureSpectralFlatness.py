@@ -11,15 +11,15 @@ computes the spectral flatness from the magnitude spectrum
 """
 
 import numpy as np
-  
-    
-def FeatureSpectralFlatness(X,f_s):   
-    
-    norm = X.mean(axis=0)
-    norm[norm == 0] = 1
-    
-    X   = np.log(X+1e-20)
 
-    vtf = np.exp(X.mean(axis=0)) / norm;
-   
-    return (vtf)
+
+def FeatureSpectralFlatness(X, f_s):
+
+    norm = X.mean(axis=0, keepdims=True)
+    norm[norm == 0] = 1
+
+    X = np.log(X + 1e-20)
+
+    vtf = np.exp(X.mean(axis=0, keepdims=True)) / norm
+
+    return np.squeeze(vtf, axis=0)

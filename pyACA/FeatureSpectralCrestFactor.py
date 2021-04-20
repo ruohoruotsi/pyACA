@@ -9,13 +9,14 @@ computes the spectral crest from the magnitude spectrum
   Returns:
     v spectral crest factor
 """
-  
-    
-def FeatureSpectralCrestFactor(X,f_s):   
-    
-    norm = X.sum(axis=0)
+
+import numpy as np
+
+def FeatureSpectralCrestFactor(X, f_s):
+
+    norm = X.sum(axis=0, keepdims=True)
     norm[norm == 0] = 1
 
-    vtsc = X.max(axis = 0)/norm;
-    
-    return (vtsc)
+    vtsc = X.max(axis=0) / norm
+
+    return np.squeeze(vtsc, axis=0)
